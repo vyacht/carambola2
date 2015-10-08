@@ -20,6 +20,10 @@
 #include "dev-wmac.h"
 #include "machtypes.h"
 
+#include <linux/mmc/host.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/mmc_spi.h>
+
 #define CARAMBOLA2_GPIO_LED_WLAN		0
 #define CARAMBOLA2_GPIO_LED_ETH0		14
 #define CARAMBOLA2_GPIO_LED_ETH1		13
@@ -29,6 +33,7 @@
 #define CARAMBOLA2_KEYS_POLL_INTERVAL		20	/* msecs */
 #define CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL	(3 * CARAMBOLA2_KEYS_POLL_INTERVAL)
 
+#define CARAMBOLA2_GPIO_CS1_MMC                 22
 #define CARAMBOLA2_MAC0_OFFSET			0x0000
 #define CARAMBOLA2_MAC1_OFFSET			0x0006
 #define CARAMBOLA2_CALDATA_OFFSET		0x1000
@@ -65,7 +70,12 @@ static void __init carambola2_common_setup(void)
 {
 	u8 *art = (u8 *) KSEG1ADDR(0x1fff0000);
 
-	ath79_register_m25p80(NULL);
+	/* Disable UART, enabling GPIO 9 and GPIO 10 */
+	ath79_gpio_function_disable(AR933X_GPIO_FUNC_UART_EN);
+	/* Enabling internal CS1, disable GPIO 9 */
+	ath79_gpio_function_enable(AR933X_GPIO_FUNC_SPI_CS_EN1);
+
+	ath79_register_m25p80i_multi(NULL);
 	ath79_register_wmac(art + CARAMBOLA2_CALDATA_OFFSET,
 			    art + CARAMBOLA2_WMAC_MAC_OFFSET);
 
@@ -81,6 +91,8 @@ static void __init carambola2_common_setup(void)
 
 	/* WAN port */
 	ath79_register_eth(0);
+
+	// spi_register_board_info(ath79_spi_info, ARRAY_SIZE(ath79_spi_info));
 }
 
 static void __init carambola2_setup(void)
