@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2009-2011 OpenWrt.org
+
+START=45
+
+NAME=fixboot
+PIDF=/var/run/$NAME.pid
+PROG=/usr/sbin/$NAME
+
+start() {
+
+    [ -f /etc/sysctl.conf ] && {
+        if ! grep -q "kernel.sysrq = 0" /etc/sysctl.conf
+        then
+            printf '\n\nkernel.sysrq = 0\n' >> /etc/sysctl.conf
+        fi
+    }
+}
+

@@ -1,0 +1,94 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2009-2011 OpenWrt.org
+
+. /usr/share/libubox/jshn.sh
+
+START=50
+
+NAME=gpsd
+PIDF=/var/run/$NAME.pid
+PROG=/usr/sbin/$NAME
+
+fixup_interface() {
+    local config="$1"
+    
+    json_add_object ""
+    
+    config_get type "$config" type
+    json_add_string "type" $type
+    
+    config_get port "$config" port
+    json_add_int "port" $port
+    
+    config_get speed "$config" speed
+    json_add_int "speed" $speed
+    
+    config_get enabled "$config" enabled
+    
+    json_close_object
+    
+}                
+                
+
+start() {
+
+    if [ -f "/etc/config/vymodule" ]; then
+      config_load vymodule
+    
+      json_init
+      json_add_array "ports"
+      config_foreach fixup_interface interface
+      json_close_array
+    
+      PORTS=`json_dump`
+      PORTS="${PORTS// /}"
+    else
+      PORTS=""
+    fi 
+        
+    config_load gpsd
+    config_get devices core device
+    config_get port core port
+    config_get_bool listen_globally core listen_globally
+    config_get_bool enabled core enabled
+
+    [ "$enabled" != "1" ] && exit
+    logger -t "$NAME" "Starting..."
+    if [ -n "$devices" ]; then
+      local d
+      for d in $devices; do
+        local pre=${d:0:5}
+        if [ $pre == "st://" ]; then
+          d=${d:5}
+        else
+          pre=${d:0:8}
+          if [ $pre == "vyspi://" ]; then
+            d=${d:8}
+          else
+            pre=""
+          fi
+        fi
+        [ ! -c "$d" ] && {
+          logger -t "$NAME" "Unable to find device $pre$d. Exiting."
+          exit 1
+        }
+        append device "$pre$d"
+      done
+    fi
+
+    [ "$listen_globally" != "0" ] && append args "-G"
+    if [ -n "$PORTS" ]; then
+      $PROG -n -P $PIDF -S $port $args $device?$PORTS
+    else
+      $PROG -n -P $PIDF -S $port $args $device
+    fi
+}
+
+stop() {
+    logger -t "$NAME" "Stopping..."
+    [ -f "$PIDF" ] && {
+        read PID < "$PIDF"
+        kill -9 $PID
+        rm $PIDF
+    }
+}

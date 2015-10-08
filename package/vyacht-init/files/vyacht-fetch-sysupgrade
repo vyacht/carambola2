@@ -1,0 +1,3 @@
+#!/bin/sh
+
+wget -P /tmp http://192.168.1.2/carambola2/openwrt-ar71xx-generic-carambola2-squashfs-sysupgrade.bin
